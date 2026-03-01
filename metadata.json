@@ -1,0 +1,7 @@
+{
+  "name": "MedSafe AI",
+  "description": "A healthcare safety application for medicine interaction checks, prescription OCR, and symptom risk evaluation.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}

@@ -1,0 +1,45 @@
+[
+  {
+    "name": "Aspirin",
+    "salt": "Acetylsalicylic acid",
+    "interactions": [
+      {
+        "with": "Warfarin",
+        "risk": "HIGH",
+        "description": "Increased risk of bleeding."
+      },
+      {
+        "with": "Ibuprofen",
+        "risk": "MEDIUM",
+        "description": "May decrease the antiplatelet effect of aspirin."
+      }
+    ]
+  },
+  {
+    "name": "Warfarin",
+    "salt": "Warfarin Sodium",
+    "interactions": [
+      {
+        "with": "Aspirin",
+        "risk": "HIGH",
+        "description": "Increased risk of bleeding."
+      }
+    ]
+  },
+  {
+    "name": "Ibuprofen",
+    "salt": "Ibuprofen",
+    "interactions": [
+      {
+        "with": "Aspirin",
+        "risk": "MEDIUM",
+        "description": "May decrease the antiplatelet effect of aspirin."
+      }
+    ]
+  },
+  {
+    "name": "Paracetamol",
+    "salt": "Acetaminophen",
+    "interactions": []
+  }
+]
