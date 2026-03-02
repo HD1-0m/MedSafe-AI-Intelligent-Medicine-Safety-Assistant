@@ -1,16 +1,12 @@
 from rapidfuzz import process, fuzz
 from typing import List, Dict, Tuple, Optional
+
 from database.medicine_db import load_medicine_db
 
 class InteractionChecker:
-    """
-    Handles medicine identification and interaction detection.
-    """
-    
     def __init__(self, db_path: str = "database/medicines.json"):
         self.db = load_medicine_db(db_path)
         self.medicine_names = [med['name'] for med in self.db]
-
     def identify_medicine(self, query: str, threshold: int = 80) -> Optional[Dict]:
         """
         Identifies a medicine from a query string using fuzzy matching.

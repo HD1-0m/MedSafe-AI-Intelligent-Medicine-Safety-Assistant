@@ -15,7 +15,7 @@ class AIEngine:
         """
         severity = risk_data.get('severity', 'UNKNOWN')
         reasons = ", ".join(risk_data.get('reasons', []))
-        
+        print("Calling Ollama with model:", self.model)
         prompt = (
             f"As a medical safety assistant, explain the following health risk in simple, educational terms. "
             f"Severity: {severity}. Reasons: {reasons}. "
