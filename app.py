@@ -5,7 +5,48 @@ from core.interaction_checker import InteractionChecker
 from core.risk_engine import RiskEngine
 from core.ai_engine import AIEngine
 from utils.helpers import log_event
+from core.side_effect_engine import SideEffectEngine
+def render_severity_badge(severity: str):
+    color_map = {
+        "HIGH": "#DC2626",
+        "MEDIUM": "#F59E0B",
+        "LOW": "#16A34A"
+    }
+    color = color_map.get(severity, "#64748B")
 
+    st.markdown(
+        f"""
+        <div style="
+            padding:10px 16px;
+            border-radius:8px;
+            background-color:{color};
+            color:white;
+            font-weight:600;
+            display:inline-block;
+            margin-bottom:10px;">
+            Severity: {severity}
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+
+def render_ai_card(content: str):
+    st.markdown(
+        f"""
+        <div style="
+            background-color:#0F172A;
+            border:1px solid #1E293B;
+            padding:20px;
+            border-radius:12px;
+            margin-top:15px;">
+            <b>🤖 AI Educational Guidance</b>
+            <hr style="border:1px solid #1E293B;">
+            {content}
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 # Page Configuration
 st.set_page_config(
     page_title="MedSafe AI - Healthcare Safety",
@@ -19,11 +60,13 @@ def get_engines():
     return {
         "checker": InteractionChecker(),
         "risk": RiskEngine(),
-        "ai": AIEngine()
+        "ai": AIEngine(),
+           "side": SideEffectEngine()
     }
 
 engines = get_engines()
-
+if "side_engine" not in st.session_state:
+    st.session_state.side_engine = SideEffectEngine()
 # Header
 st.title("🏥 MedSafe AI")
 st.markdown("### Your Intelligent Healthcare Safety Companion")
@@ -33,7 +76,7 @@ st.divider()
 st.sidebar.title("Navigation")
 tab_selection = st.sidebar.radio(
     "Go to",
-    ["Medicine Interaction Checker", "Prescription OCR", "Symptom Risk Evaluation"]
+    ["Medicine Interaction Checker", "Prescription OCR", "Symptom Risk Evaluation", "Side-Effect Monitor" ]
 )
 
 # Tab 1: Medicine Interaction Checker
@@ -121,39 +164,92 @@ elif tab_selection == "Prescription OCR":
 # Tab 3: Symptom Risk Evaluation
 elif tab_selection == "Symptom Risk Evaluation":
     st.header("🚨 Symptom Risk Evaluation")
-    st.write("Evaluate health risk based on symptoms and current medications.")
-    
-    symptoms_input = st.text_area("Enter symptoms (separated by commas, e.g., chest pain, dizziness)")
-    
-    if st.button("Evaluate Risk"):
-        if symptoms_input:
-            symptoms_list = [s.strip() for s in symptoms_input.split(",")]
-            
-            # Check for interactions if medicines are selected
-            interactions = []
-            if 'selected_meds' in st.session_state:
-                interactions = engines['checker'].check_interactions(st.session_state.selected_meds)
-            
-            risk_result = engines['risk'].evaluate_risk(symptoms_list, interactions)
-            
-            severity = risk_result['severity']
-            color = "red" if severity == "HIGH" else ("orange" if severity == "MEDIUM" else "green")
-            
-            st.markdown(f"## Overall Severity: :{color}[{severity}]")
-            
-            st.subheader("Evaluation Details")
-            for reason in risk_result['reasons']:
-                st.write(f"- {reason}")
-                
-            if severity == "HIGH":
-                st.error("🚨 **IMMEDIATE ACTION REQUIRED:** Please consult a doctor or emergency services immediately.")
-            
-            with st.expander("View AI Educational Guidance"):
-                explanation = engines['ai'].generate_explanation(risk_result)
-                st.write(explanation)
-        else:
-            st.warning("Please enter at least one symptom.")
+    st.write("Evaluate health risk based on symptoms and selected medicines.")
 
+    col_input, col_output = st.columns([1,1])
+
+    with col_input:
+        symptoms_input = st.text_area(
+            "Enter symptoms (comma separated)",
+            placeholder="e.g. chest pain, dizziness"
+        )
+
+        evaluate_btn = st.button("Evaluate Risk")
+
+    if evaluate_btn and symptoms_input:
+
+        symptoms_list = [s.strip() for s in symptoms_input.split(",")]
+
+        interactions = []
+        if 'selected_meds' in st.session_state:
+            interactions = engines['checker'].check_interactions(st.session_state.selected_meds)
+
+        risk_result = engines['risk'].evaluate_risk(symptoms_list, interactions)
+
+        with col_output:
+            render_severity_badge(risk_result["severity"])
+
+            st.subheader("Evaluation Details")
+            for reason in risk_result["reasons"]:
+                st.write(f"- {reason}")
+
+            explanation = engines['ai'].generate_explanation(risk_result)
+            render_ai_card(explanation)
+            
+# ==========================================================
+# TAB 4 — SIDE EFFECT MONITOR
+# ==========================================================
+
+elif tab_selection == "Side-Effect Monitor":
+    st.header("⚠️ Side-Effect Monitor")
+    st.write("Log post-medication experience for educational analysis.")
+
+    age = st.number_input("Age", min_value=0, max_value=120, value=25)
+    gender = st.selectbox("Gender", ["Male", "Female", "Other"])
+    meds_taken = st.text_area("Medicines Taken (comma separated)")
+    doses = st.text_area("Doses (mg, comma separated)")
+    experience = st.text_area("Describe your experience after taking the medicine")
+
+    if st.button("Monitor Side Effects"):
+
+        if not meds_taken.strip() or not experience.strip():
+            st.warning("Please enter medicines and describe your experience.")
+        else:
+            raw_meds = [m.strip() for m in meds_taken.split(",")]
+            raw_doses = [d.strip() for d in doses.split(",")]
+
+            identified_meds = []
+
+            for name in raw_meds:
+                med = engines['checker'].identify_medicine(name)
+                if med:
+                    identified_meds.append(med)
+                            # If no valid medicines found
+            if not identified_meds:
+                st.warning("No valid medicines identified.")
+            else:
+                analysis = engines['side'].analyze(
+                    age=age,
+                    gender=gender,
+                    medicines=identified_meds,
+                    doses=raw_doses,
+                    experience=experience
+                )
+
+                explanation = engines['ai'].generate_explanation({
+                    "severity": analysis["risk_level"],
+                    "reasons": analysis["reasons"]
+                })
+
+                st.subheader("Side-Effect Assessment")
+
+                render_severity_badge(analysis["risk_level"])
+
+                st.subheader("Contributing Factors")
+                for reason in analysis["reasons"]:
+                    st.write(f"- {reason}")
+
+                render_ai_card(explanation)
 # Footer
 st.divider()
 st.caption("Disclaimer: MedSafe AI is an educational tool and does not provide medical diagnosis or professional advice. Always consult with a healthcare professional.")
