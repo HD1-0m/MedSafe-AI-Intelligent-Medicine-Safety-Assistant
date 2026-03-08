@@ -1,5 +1,6 @@
 from typing import List, Dict
 
+
 class SideEffectEngine:
     """
     Analyzes user-reported post-medication experiences
@@ -12,7 +13,7 @@ class SideEffectEngine:
         gender: str,
         medicines: List[Dict],
         doses: List[str],
-        experience: str
+        experience: str = ""
     ) -> Dict:
 
         reasons = []
@@ -37,18 +38,23 @@ class SideEffectEngine:
                 except:
                     pass
 
-        # Experience keywords
-        exp_lower = experience.lower()
+        # Medication profile considerations
+        if len(medicines) >= 3:
+            reasons.append("Multiple medicines increase side-effect and interaction complexity.")
+            risk_level = "MEDIUM"
 
-        if any(word in exp_lower for word in ["rash", "swelling", "breathing"]):
-            reasons.append("Symptoms resemble a possible allergic-type reaction.")
-            risk_level = "HIGH"
-
-        elif any(word in exp_lower for word in ["dizziness", "nausea", "headache"]):
-            reasons.append("Reported symptoms are common mild side effects.")
-
+        # Experience keywords (optional input)
+        exp_lower = (experience or "").lower().strip()
+        if exp_lower:
+            if any(word in exp_lower for word in ["rash", "swelling", "breathing", "wheeze", "hives"]):
+                reasons.append("Symptoms resemble a possible allergic-type reaction.")
+                risk_level = "HIGH"
+            elif any(word in exp_lower for word in ["dizziness", "nausea", "headache", "fatigue"]):
+                reasons.append("Reported symptoms are common mild-to-moderate side effects.")
+            else:
+                reasons.append("Symptoms require general monitoring.")
         else:
-            reasons.append("Symptoms require general monitoring.")
+            reasons.append("No symptom description provided; risk is estimated from profile and dosage only.")
 
         precaution = "Monitor symptoms closely and consult a healthcare professional if they worsen."
 

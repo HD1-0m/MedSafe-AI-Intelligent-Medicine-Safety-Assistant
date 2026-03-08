@@ -12,6 +12,11 @@
         "with": "Ibuprofen",
         "risk": "MEDIUM",
         "description": "May decrease the antiplatelet effect of aspirin."
+      },
+      {
+        "with": "Clopidogrel",
+        "risk": "MEDIUM",
+        "description": "Combined antiplatelet use may increase bleeding tendency."
       }
     ]
   },
@@ -23,6 +28,11 @@
         "with": "Aspirin",
         "risk": "HIGH",
         "description": "Increased risk of bleeding."
+      },
+      {
+        "with": "Amoxicillin",
+        "risk": "MEDIUM",
+        "description": "Some antibiotics can alter INR and anticoagulation response."
       }
     ]
   },
@@ -34,12 +44,89 @@
         "with": "Aspirin",
         "risk": "MEDIUM",
         "description": "May decrease the antiplatelet effect of aspirin."
+      },
+      {
+        "with": "Lisinopril",
+        "risk": "LOW",
+        "description": "NSAIDs may reduce antihypertensive response in some patients."
       }
     ]
   },
   {
     "name": "Paracetamol",
     "salt": "Acetaminophen",
-    "interactions": []
+    "interactions": [
+      {
+        "with": "Warfarin",
+        "risk": "LOW",
+        "description": "Frequent high-dose use may increase INR in some cases."
+      }
+    ]
+  },
+  {
+    "name": "Metformin",
+    "salt": "Metformin Hydrochloride",
+    "interactions": [
+      {
+        "with": "Prednisone",
+        "risk": "MEDIUM",
+        "description": "Steroids may increase blood glucose and reduce glycemic control."
+      }
+    ]
+  },
+  {
+    "name": "Lisinopril",
+    "salt": "Lisinopril",
+    "interactions": [
+      {
+        "with": "Ibuprofen",
+        "risk": "LOW",
+        "description": "NSAIDs may blunt blood pressure control in some people."
+      }
+    ]
+  },
+  {
+    "name": "Amoxicillin",
+    "salt": "Amoxicillin",
+    "interactions": [
+      {
+        "with": "Warfarin",
+        "risk": "MEDIUM",
+        "description": "Can enhance anticoagulant effect and bleeding risk in some users."
+      }
+    ]
+  },
+  {
+    "name": "Prednisone",
+    "salt": "Prednisone",
+    "interactions": [
+      {
+        "with": "Metformin",
+        "risk": "MEDIUM",
+        "description": "May elevate blood sugar and counter diabetes medications."
+      }
+    ]
+  },
+  {
+    "name": "Clopidogrel",
+    "salt": "Clopidogrel Bisulfate",
+    "interactions": [
+      {
+        "with": "Aspirin",
+        "risk": "MEDIUM",
+        "description": "Dual antiplatelet therapy increases bleeding risk."
+      }
+    ]
+  },
+  {
+    "name": "Atorvastatin",
+    "salt": "Atorvastatin Calcium",
+    "interactions": [
+      {
+        "with": "Warfarin",
+        "risk": "LOW",
+        "description": "May modestly alter anticoagulation response; monitoring is advised."
+      }
+    ]
   }
 ]
