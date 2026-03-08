@@ -79,6 +79,15 @@ tab_selection = st.sidebar.radio(
     ["Medicine Interaction Checker", "Prescription OCR", "Symptom Risk Evaluation", "Side-Effect Monitor" ]
 )
 
+st.sidebar.divider()
+st.sidebar.subheader("AI Connection")
+if st.sidebar.button("Check AI API Connection"):
+    ok, message = engines["ai"].check_api_connection()
+    if ok:
+        st.sidebar.success(message)
+    else:
+        st.sidebar.error(message)
+
 # Tab 1: Medicine Interaction Checker
 if tab_selection == "Medicine Interaction Checker":
     st.header("🔍 Medicine Interaction Checker")

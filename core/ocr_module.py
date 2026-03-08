@@ -3,6 +3,7 @@ from PIL import Image
 from typing import Union
 import os
 import io
+from PIL import ImageOps
 
 # If you are on Windows, set this to your Tesseract path:
 # Example (default Windows install):
@@ -35,8 +36,13 @@ def extract_text_from_image(image_source: Union[str, Image.Image, bytes]) -> str
         else:
             raise TypeError(f"Unsupported image type: {type(image_source)}")
 
+        # --- LIGHT PREPROCESSING TO IMPROVE OCR QUALITY ---
+        # Convert to grayscale and increase contrast for cleaner text extraction.
+        processed = ImageOps.grayscale(img)
+        processed = ImageOps.autocontrast(processed)
+
         # --- OCR ---
-        text = pytesseract.image_to_string(img)
+        text = pytesseract.image_to_string(processed)
         return text.strip()
 
     except Exception as e:
