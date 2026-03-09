@@ -15,11 +15,18 @@ class AIEngine:
     """
 
     def __init__(self, model: Optional[str] = None, provider: Optional[str] = None):
-        self.provider = (provider or os.getenv("AI_PROVIDER", "ollama")).strip().lower()
+        self.gemini_api_key = os.getenv("GEMINI_API_KEY", "").strip()
         self.ollama_model = os.getenv("OLLAMA_MODEL", "llama3")
         self.gemini_model = os.getenv("GEMINI_MODEL", "gemini-3-flash-preview")
+
+        provider_env = (provider or os.getenv("AI_PROVIDER", "")).strip().lower()
+        if provider_env:
+            self.provider = provider_env
+        else:
+            # Prefer Gemini automatically when API key is present.
+            self.provider = "gemini" if self.gemini_api_key else "ollama"
+
         self.model = model or (self.gemini_model if self.provider == "gemini" else self.ollama_model)
-        self.gemini_api_key = os.getenv("GEMINI_API_KEY", "").strip()
 
     def _mask_key(self, key: str) -> str:
         if not key:
@@ -364,6 +371,67 @@ class AIEngine:
         except Exception:
             return self.parse_prescription(ocr_text)
 
+    def prescription_to_readable_text(
+        self,
+        parsed_prescription: Dict[str, Any],
+        raw_ocr_text: str = "",
+    ) -> str:
+        """
+        Convert parsed prescription JSON into a concise, human-readable paragraph.
+        """
+        prompt = (
+            "You are MedSafe AI. Convert this prescription data into clear, human-readable text.\n"
+            "Output rules:\n"
+            "- Write one short paragraph in plain language.\n"
+            "- Mention each medicine and available usage details (dosage/frequency/duration).\n"
+            "- If any medicine detail is uncertain or missing, say so briefly.\n"
+            "- Do not diagnose and do not suggest treatment changes.\n"
+            f"Parsed prescription JSON:\n{json.dumps(parsed_prescription)}\n"
+            f"Raw OCR context:\n{raw_ocr_text}"
+        )
+        try:
+            text = self._generate(prompt).strip()
+            if text:
+                return text
+        except Exception:
+            pass
+
+        medicines = parsed_prescription.get("medicines", [])
+        if not isinstance(medicines, list) or not medicines:
+            return "No medicines could be confidently extracted from the prescription."
+
+        chunks: List[str] = []
+        for med in medicines:
+            if not isinstance(med, dict):
+                continue
+            name = str(med.get("medicine_name", "") or "").strip()
+            if not name:
+                continue
+            dosage = str(med.get("dosage", "") or "").strip()
+            frequency = str(med.get("frequency", "") or "").strip()
+            duration = str(med.get("duration", "") or "").strip()
+            notes = str(med.get("notes", "") or "").strip()
+
+            details: List[str] = []
+            if dosage:
+                details.append(f"dosage {dosage}")
+            if frequency:
+                details.append(f"frequency {frequency}")
+            if duration:
+                details.append(f"duration {duration}")
+            if notes:
+                details.append(f"note {notes}")
+
+            if details:
+                chunks.append(f"{name} ({', '.join(details)})")
+            else:
+                chunks.append(f"{name} (details unclear)")
+
+        if not chunks:
+            return "Prescription text was detected, but medicine details remain unclear."
+
+        return "Extracted medicines: " + "; ".join(chunks) + "."
+
     def _parse_json_strict(self, raw_text: str) -> Dict[str, Any]:
         """
         Parse model output into strict JSON object with required schema.
@@ -438,11 +506,25 @@ class AIEngine:
             f'"advice" (string).\n'
             f"Example schema: {json.dumps(schema_hint)}"
         )
+        raw = ""
         try:
             raw = self._generate(prompt)
             parsed = self._parse_json_interaction(raw)
             return parsed
         except Exception as e:
+            # Retry once by asking model to normalize prior output into strict JSON.
+            try:
+                repair_prompt = (
+                    "Convert the following interaction analysis into STRICT JSON ONLY. "
+                    "Required keys: interactions (array of {pair:[2 strings], risk, description}), advice.\n"
+                    f"Text:\n{raw or str(e)}"
+                )
+                repaired_raw = self._generate(repair_prompt)
+                repaired = self._parse_json_interaction(repaired_raw)
+                if repaired.get("interactions") or repaired.get("advice"):
+                    return repaired
+            except Exception:
+                pass
             return {
                 "interactions": [],
                 "advice": (

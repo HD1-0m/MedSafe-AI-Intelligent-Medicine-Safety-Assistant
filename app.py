@@ -240,10 +240,23 @@ with tab_ocr:
                 if clean_text:
                     st.subheader("Raw OCR Text (Tesseract)")
                     st.code(clean_text)
-                    parsed_result = engines["ai"].parse_prescription(clean_text)
-                    st.subheader("Structured JSON (LLM Parsed)")
+                    parsed_result = engines["ai"].parse_prescription_from_image(
+                        image_bytes=image_bytes,
+                        mime_type=getattr(uploaded_file, "type", "") or "image/png",
+                        ocr_text=clean_text,
+                    )
                     try:
-                        st.json(json.loads(parsed_result))
+                        parsed_json = json.loads(parsed_result)
+                        if isinstance(parsed_json, dict) and parsed_json.get("reconstructed_text"):
+                            st.subheader("Reconstructed Text (AI + Image)")
+                            st.code(parsed_json["reconstructed_text"])
+                        if isinstance(parsed_json, dict):
+                            readable_text = engines["ai"].prescription_to_readable_text(
+                                parsed_prescription=parsed_json,
+                                raw_ocr_text=clean_text,
+                            )
+                            st.subheader("Readable Prescription (AI)")
+                            st.write(readable_text)
                     except Exception:
                         render_ai_card("🤖 AI Structured Prescription Analysis", parsed_result)
                 else:

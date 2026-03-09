@@ -4,6 +4,8 @@ from typing import Union
 import os
 import io
 from PIL import ImageOps
+from PIL import ImageFilter
+from typing import List, Tuple
 
 def _configure_tesseract_binary() -> None:
     """
@@ -24,6 +26,39 @@ def is_tesseract_available() -> bool:
         return True
     except Exception:
         return False
+
+
+def _score_ocr_candidate(image: Image.Image, config: str) -> Tuple[float, str]:
+    """
+    Run OCR and return (confidence_score, extracted_text).
+    """
+    text = pytesseract.image_to_string(image, config=config).strip()
+    if not text:
+        return 0.0, ""
+
+    try:
+        data = pytesseract.image_to_data(
+            image,
+            config=config,
+            output_type=pytesseract.Output.DICT,
+        )
+        confidences: List[float] = []
+        for raw in data.get("conf", []):
+            try:
+                value = float(raw)
+            except Exception:
+                continue
+            if value >= 0:
+                confidences.append(value)
+        avg_conf = sum(confidences) / len(confidences) if confidences else 0.0
+    except Exception:
+        avg_conf = 0.0
+
+    # Slightly prefer candidates with more readable content when confidence is close.
+    signal = min(len(text), 300) / 300.0
+    score = (avg_conf * 0.85) + (signal * 15.0)
+    return score, text
+
 
 def extract_text_from_image(image_source: Union[str, Image.Image, bytes]) -> str:
     """
@@ -54,14 +89,38 @@ def extract_text_from_image(image_source: Union[str, Image.Image, bytes]) -> str
         else:
             raise TypeError(f"Unsupported image type: {type(image_source)}")
 
-        # --- LIGHT PREPROCESSING TO IMPROVE OCR QUALITY ---
-        # Convert to grayscale and increase contrast for cleaner text extraction.
-        processed = ImageOps.grayscale(img)
-        processed = ImageOps.autocontrast(processed)
+        # Standardize orientation/mode and build multiple variants for difficult text.
+        img = ImageOps.exif_transpose(img).convert("RGB")
+        gray = ImageOps.grayscale(img)
 
-        # --- OCR ---
-        text = pytesseract.image_to_string(processed, config="--psm 6")
-        return text.strip()
+        variants: List[Image.Image] = []
+        variants.append(ImageOps.autocontrast(gray))
+        variants.append(ImageOps.equalize(gray))
+        variants.append(ImageOps.autocontrast(gray.filter(ImageFilter.SHARPEN)))
+        variants.append(ImageOps.autocontrast(gray.filter(ImageFilter.MedianFilter(size=3))))
+
+        # Binary threshold variant often helps on faint pen strokes.
+        threshold = ImageOps.autocontrast(gray).point(lambda p: 255 if p > 165 else 0)
+        variants.append(threshold)
+
+        # Try multiple segmentation modes and pick the best scoring candidate.
+        language = os.getenv("OCR_LANG", "eng").strip() or "eng"
+        configs = [
+            f"--oem 1 --psm 6 -l {language}",
+            f"--oem 1 --psm 11 -l {language}",
+            f"--oem 1 --psm 4 -l {language}",
+        ]
+
+        best_score = -1.0
+        best_text = ""
+        for variant in variants:
+            for config in configs:
+                score, candidate_text = _score_ocr_candidate(variant, config)
+                if score > best_score and candidate_text:
+                    best_score = score
+                    best_text = candidate_text
+
+        return best_text.strip()
 
     except Exception as e:
         print(f"OCR Error: {e}")
