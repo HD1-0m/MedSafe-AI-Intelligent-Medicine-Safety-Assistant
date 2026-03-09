@@ -11,7 +11,8 @@ import ollama
 
 class AIEngine:
     """
-    Handles LLM interactions with either Ollama (local) or Gemini (API).
+    Handles LLM 
+    ctions with either Ollama (local) or Gemini (API).
     """
 
     def __init__(self, model: Optional[str] = None, provider: Optional[str] = None):
@@ -370,67 +371,6 @@ class AIEngine:
             return self.parse_prescription(ocr_text)
         except Exception:
             return self.parse_prescription(ocr_text)
-
-    def prescription_to_readable_text(
-        self,
-        parsed_prescription: Dict[str, Any],
-        raw_ocr_text: str = "",
-    ) -> str:
-        """
-        Convert parsed prescription JSON into a concise, human-readable paragraph.
-        """
-        prompt = (
-            "You are MedSafe AI. Convert this prescription data into clear, human-readable text.\n"
-            "Output rules:\n"
-            "- Write one short paragraph in plain language.\n"
-            "- Mention each medicine and available usage details (dosage/frequency/duration).\n"
-            "- If any medicine detail is uncertain or missing, say so briefly.\n"
-            "- Do not diagnose and do not suggest treatment changes.\n"
-            f"Parsed prescription JSON:\n{json.dumps(parsed_prescription)}\n"
-            f"Raw OCR context:\n{raw_ocr_text}"
-        )
-        try:
-            text = self._generate(prompt).strip()
-            if text:
-                return text
-        except Exception:
-            pass
-
-        medicines = parsed_prescription.get("medicines", [])
-        if not isinstance(medicines, list) or not medicines:
-            return "No medicines could be confidently extracted from the prescription."
-
-        chunks: List[str] = []
-        for med in medicines:
-            if not isinstance(med, dict):
-                continue
-            name = str(med.get("medicine_name", "") or "").strip()
-            if not name:
-                continue
-            dosage = str(med.get("dosage", "") or "").strip()
-            frequency = str(med.get("frequency", "") or "").strip()
-            duration = str(med.get("duration", "") or "").strip()
-            notes = str(med.get("notes", "") or "").strip()
-
-            details: List[str] = []
-            if dosage:
-                details.append(f"dosage {dosage}")
-            if frequency:
-                details.append(f"frequency {frequency}")
-            if duration:
-                details.append(f"duration {duration}")
-            if notes:
-                details.append(f"note {notes}")
-
-            if details:
-                chunks.append(f"{name} ({', '.join(details)})")
-            else:
-                chunks.append(f"{name} (details unclear)")
-
-        if not chunks:
-            return "Prescription text was detected, but medicine details remain unclear."
-
-        return "Extracted medicines: " + "; ".join(chunks) + "."
 
     def _parse_json_strict(self, raw_text: str) -> Dict[str, Any]:
         """
